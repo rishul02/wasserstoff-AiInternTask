@@ -11,13 +11,13 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 from collections import Counter
 from tqdm import tqdm
 
-"""Initializing logging """"
+#Initializing logging
 logging.basicConfig(level=logging.INFO, filename="pipeline.log", 
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
-"""MongoDB Setup"""
+#MongoDB Setup
 try:
-    client = MongoClient("mongodb+srv://rishulbosatta:<password123>@cluster0.pcvbr.mongodb.net/") """Put your MongoDB Atlas URL here"""
+    client = MongoClient("mongodb+srv://rishulbosatta:<password123>@cluster0.pcvbr.mongodb.net/") #Put your MongoDB Atlas URL here"""
     db = client["pdf_pipeline"]
     collection = db["documents"]
 except Exception as e:
@@ -25,9 +25,9 @@ except Exception as e:
     raise
 
 
-PDF_FOLDER = os.path.expanduser("C:\Users\admin\Desktop\project folder\data") #Put directory of your data here
+PDF_FOLDER = r"C:\Users\admin\Desktop\project folder\data"  #Put directory of your data
 
-"""To download nltk resources"""
+#To download nltk resources
 try:
     import nltk
     nltk.download('stopwords')
@@ -49,7 +49,7 @@ def extract_text_from_pdf(file_path):
         logging.error(f"Error processing {file_path}: {e}")
         return None
 
- """To generate the summary from the Text"""
+"""To generate the summary from the Text"""
 def generate_summary(text):
     try:
         sentences = text.split('.')
@@ -100,7 +100,7 @@ def process_pdf(file_path):
         "status": "processing"
     }
 
-""" To store initial metadata"""
+#To store initial metadata
     try:
         doc_id = collection.insert_one(metadata).inserted_id
 
@@ -117,7 +117,7 @@ def process_pdf(file_path):
         keywords = extract_keywords(text)
         sentiment = analyze_sentiment(text)
 
-""" To update MongoDB with processed data"""
+#To update MongoDB with processed data
         collection.update_one(
             {"_id": doc_id},
             {"$set": {
