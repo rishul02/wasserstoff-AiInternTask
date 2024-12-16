@@ -1,0 +1,156 @@
+import os
+import time
+import json
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from PyPDF2 import PdfReader
+from pymongo import MongoClient
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.sentiment import SentimentIntensityAnalyzer
+from collections import Counter
+from tqdm import tqdm
+
+"""Initializing logging """"
+logging.basicConfig(level=logging.INFO, filename="pipeline.log", 
+                    format="%(asctime)s - %(levelname)s - %(message)s")
+
+"""MongoDB Setup"""
+try:
+    client = MongoClient("mongodb+srv://rishulbosatta:<password123>@cluster0.pcvbr.mongodb.net/") """Put your MongoDB Atlas URL here"""
+    db = client["pdf_pipeline"]
+    collection = db["documents"]
+except Exception as e:
+    logging.critical(f"Failed to connect to MongoDB: {e}")
+    raise
+
+
+PDF_FOLDER = os.path.expanduser("C:\Users\admin\Desktop\project folder\data") #Put directory of your data here
+
+"""To download nltk resources"""
+try:
+    import nltk
+    nltk.download('stopwords')
+    nltk.download('punkt')
+    nltk.download('vader_lexicon')
+    stop_words = set(stopwords.words('english'))
+    sia = SentimentIntensityAnalyzer()
+except Exception as e:
+    logging.critical(f"Failed to initialize NLTK components: {e}")
+    raise
+
+"""To extract texts data from the PDFs"""
+def extract_text_from_pdf(file_path):
+    try:
+        reader = PdfReader(file_path)
+        text = " ".join(page.extract_text() for page in reader.pages if page.extract_text())
+        return text
+    except Exception as e:
+        logging.error(f"Error processing {file_path}: {e}")
+        return None
+
+ """To generate the summary from the Text"""
+def generate_summary(text):
+    try:
+        sentences = text.split('.')
+        summary = '. '.join(sentences[:4])
+        return summary
+    except Exception as e:
+        logging.error(f"Error generating summary: {e}")
+        return "Summary not available."
+
+""" To extract keywords from text"""
+def extract_keywords(text):
+    try:
+        words = word_tokenize(text)
+        filtered_words = [word for word in words if word.isalnum() and word.lower() not in stop_words]
+        most_common = Counter(filtered_words).most_common(15)
+        keywords = [word for word, _ in most_common]
+        return keywords
+    except Exception as e:
+        logging.error(f"Error extracting keywords: {e}")
+        return []
+
+"""To Analyze sentiment of the text"""
+def analyze_sentiment(text):
+    try:
+        sentiment = sia.polarity_scores(text)
+        return sentiment
+    except Exception as e:
+        logging.error(f"Error analyzing sentiment: {e}")
+        return {"positive": 0, "negative": 0, "neutral": 0}
+
+"""To Validate if the file is a readable PDF."""
+def validate_pdf(file_path):
+    try:
+        reader = PdfReader(file_path)
+        _ = reader.pages #it will access pages to ensure it is a valid pdf or not
+        return True
+    except Exception as e:
+        logging.warning(f"Invalid PDF {file_path}: {e}")
+        return False
+
+"""To process a single PDF file"""
+def process_pdf(file_path):
+    file_name = os.path.basename(file_path)
+    metadata = {
+        "file_name": file_name,
+        "path": file_path,
+        "size": round(os.path.getsize(file_path) / (1024 * 1024), 2),
+        "status": "processing"
+    }
+
+""" To store initial metadata"""
+    try:
+        doc_id = collection.insert_one(metadata).inserted_id
+
+        if not validate_pdf(file_path):
+            collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "error": "Invalid PDF format"}})
+            return
+
+        text = extract_text_from_pdf(file_path)
+        if not text:
+            collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "error": "Text extraction failed"}})
+            return
+
+        summary = generate_summary(text)
+        keywords = extract_keywords(text)
+        sentiment = analyze_sentiment(text)
+
+""" To update MongoDB with processed data"""
+        collection.update_one(
+            {"_id": doc_id},
+            {"$set": {
+                "status": "completed",
+                "summary": summary,
+                "keywords": keywords,
+                "sentiment": sentiment
+            }}
+        )
+        
+
+        logging.info(f"Processed {file_name}: Summary, keywords, and sentiment stored.")
+    except Exception as e:
+        logging.error(f"Error processing {file_name}: {e}")
+        collection.update_one({"file_name": file_name}, {"$set": {"status": "failed", "error": str(e)}})
+
+def process_all_pdfs():
+    if not os.path.exists(PDF_FOLDER):
+        os.makedirs(PDF_FOLDER)
+        logging.info(f"Created directory: {PDF_FOLDER}")
+        return
+
+    files = [os.path.join(PDF_FOLDER, f) for f in os.listdir(PDF_FOLDER) if f.endswith(".pdf")]
+    print(f"Found {len(files)} PDFs in the folder. \n Processing...")
+    logging.info(f"Found {len(files)} PDF(s) to process.")
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        list(tqdm(executor.map(process_pdf, files), total=len(files)))
+
+if __name__ == "__main__":
+    try:
+        process_all_pdfs()
+    except ModuleNotFoundError as e:
+        logging.critical(f"Required module not found: {e}. Ensure all dependencies are installed.")
+    except Exception as e:
+        logging.critical(f"Critical failure in pipeline: {e}")
