@@ -8,10 +8,7 @@ Python Version: Python 3.10 or higher
 Libraries: PyPDF2
            nltk
            pymongo
-           concurrent.futures
-           pdfplumber
-           tqdm
-           collections
+           
 MongoDB: Access to a MongoDB Atlas Database
 
 Set Up Instrctions:
@@ -19,7 +16,7 @@ Set Up Instrctions:
             git clone https://github.com/rishul02/wasserstoff-AiInternTask.git
              Navigate to Project folder: cd wasserstoff-AiInternTask
     Step 2 : Install Required Python Libraries
-            pip install -r requirements.txt
+            
     Step 3 : Step Up MongoDB
             1. Create a MongoDB Cluster
             2. Create a Cluster and get the connection String
