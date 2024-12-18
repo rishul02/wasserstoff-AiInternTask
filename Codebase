@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO, filename="pipeline.log",
 
 #MongoDB Setup
 try:
-    client = MongoClient("mongodb+srv://rishulbosatta:<password123>@cluster0.pcvbr.mongodb.net/") #Put your MongoDB Atlas URL here"""
-    db = client["pdf_pipeline"]
+    client = MongoClient("mongodb+srv://rishul02:rishul2003@cluster0.v2oly.mongodb.net/") #Put your MongoDB Atlas URL here"""
+    db = client["pdf_docs"]
     collection = db["documents"]
 except Exception as e:
     logging.critical(f"Failed to connect to MongoDB: {e}")
@@ -147,7 +147,9 @@ def process_all_pdfs():
     with ThreadPoolExecutor(max_workers=4) as executor:
         list(tqdm(executor.map(process_pdf, files), total=len(files)))
 
-if __name__ == "__main__":
+start = 2
+while start > 1:
+    start = 0
     try:
         process_all_pdfs()
     except ModuleNotFoundError as e:
