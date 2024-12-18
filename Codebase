@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, filename="pipeline.log",
 
 #MongoDB Setup
 try:
-    client = MongoClient("mongodb+srv://rishul02:rishul2003@cluster0.v2oly.mongodb.net/") #Put your MongoDB Atlas URL here"""
+    client = MongoClient("mongodb+srv://rishul02:password@cluster0.v2oly.mongodb.net/") #Put your MongoDB Atlas URL here"""
     db = client["pdf_docs"]
     collection = db["documents"]
 except Exception as e:
