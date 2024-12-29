@@ -147,9 +147,7 @@ def process_all_pdfs():
     with ThreadPoolExecutor(max_workers=4) as executor:
         list(tqdm(executor.map(process_pdf, files), total=len(files)))
 
-start = 2
-while start > 1:
-    start = 0
+if __name__ = "__main__"
     try:
         process_all_pdfs()
     except ModuleNotFoundError as e:
